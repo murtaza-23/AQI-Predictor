@@ -28,6 +28,8 @@ The system automatically:
 - OpenWeather API / AQICN API
 
 ## Project Structure
+
+```text
 aqi-predictor/
 │
 ├── feature_pipeline/
@@ -35,4 +37,5 @@ aqi-predictor/
 ├── web_app/
 ├── notebooks/
 └── .github/
-└── workflows/
+    └── workflows/
+```

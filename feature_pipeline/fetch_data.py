@@ -74,10 +74,27 @@ def fetch_openweather_air_pollution_data():
     }
 
 def fetch_all_data():
-    aqi = fetch_aqicn_data()
+    aqicn = fetch_aqicn_data()
     weather = fetch_openweather_weather_data()
     pollution = fetch_openweather_air_pollution_data()
 
+    merged = {
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        "aqi": aqicn["aqi"],
+        "pm2_5": pollution["pm2_5"],
+        "pm10": pollution["pm10"],
+        "o3": pollution["o3"],
+        "no2": pollution["no2"],
+        "co": pollution["co"],
+        "so2": pollution["so2"], 
+    }
+    merged.update(weather)
+
+    return merged
+
 if __name__ == "__main__":
-    pass
+    data = fetch_all_data()
+    print(f"\nCombined Data (AQICN and OpenWeather)\n")
+    for k, v in data.items():
+        print(f"{k}: {v}")
 

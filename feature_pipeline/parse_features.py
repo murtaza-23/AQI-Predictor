@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # convert data obtained from the APIs in form of a dictionary to a DataFrame (tabular form)
-def parse_to_dataframe(data: dict) -> pd.DataFrame: 
+def compute_features(data: dict) -> pd.DataFrame: 
 
     df = pd.DataFrame([data])   # single row dataframe
 
@@ -30,5 +30,40 @@ def parse_to_dataframe(data: dict) -> pd.DataFrame:
     pollutant_data_columns = ["pm2_5", "pm10", "o3", "no2", "co", "so2"]
     weather_data_columns = ["temperature", "pressure", "humidity", "wind_speed", "wind_direction"]
 
+    for col in pollutant_data_columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    for col in weather_data_columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df["aqi"] = pd.to_numeric(df["aqi"], errors="coerce")
+
+    final_columns = ["timestamp", "aqi", "pm2_5", "pm10", "o3", "no2", "co", "so2",
+    "temperature", "pressure", "humidity", "wind_speed", "wind_direction",
+    "hour", "day", "month", "is_weekend", "hour_category"]
+
+    return df[final_columns]
 
 
+# Function to add AQI Change rate
+def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
+
+    df = df.sort_values("timestamp").reset_index(drop=True)
+
+    df["aqi_change_rate"] = df["aqi"].diff()    # current - previous
+
+    df = df.dropna(subset=["aqi_change_rate"]).reset_index(drop=True)
+
+    return df
+
+if __name__ == "__main__":
+    import sys
+    sys.path.append(".")
+    from feature_pipeline.fetch_data import fetch_all_data
+
+    raw_data = fetch_all_data()
+    df = compute_features(raw_data)
+    print(df.to_string())
+    print(f"\nShape: {df.shape}")
+    print(f"\nData types:\n{df.dtypes}")
+    print(f"\nNull values:\n{df.isnull().sum()}")

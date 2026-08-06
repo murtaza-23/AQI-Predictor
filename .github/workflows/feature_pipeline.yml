@@ -18,11 +18,15 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-        
+        run: |
+          pip install -r requirements.txt
+          pip install hops-deltalake
+
       - name: Run feature pipeline
         env:
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
           AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-        run: cd feature_pipeline && python pipeline.py
+        run: |
+          cd feature_pipeline
+          python pipeline.py

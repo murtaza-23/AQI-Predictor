@@ -1,23 +1,50 @@
-import tempfile
 import os
-import hopsworks
+import sys
+import platform
+import pandas as pd
+import sqlite3
 from dotenv import load_dotenv
 from fetch_data import fetch_all_data
 from parse_features import compute_features
 
 load_dotenv()
 
-def get_feature_group():
+# Path to local SQLite feature store (when running locally on Windows)
+DB_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "feature_store", "aqi_features.db"
+)
 
-    cert_folder = os.path.join(os.getcwd(), ".hopsworks_certs")
+def save_to_sqlite(df):
+    
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    df.to_sql("aqi_features", conn, if_exists="append", index=False)
+    total = pd.read_sql("SELECT COUNT(*) as count FROM aqi_features", conn)
+    conn.close()
+    print(f"SQLite store: {total['count'].iloc[0]} total rows in feature store")
 
+def read_from_sqlite():
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql("SELECT * FROM aqi_features ORDER BY timestamp", conn)
+    conn.close()
+    return df
+
+# Use Hopesworks when using a Linux System (GitHub Actions)
+def save_to_hopsworks(df):  
+    cert_folder = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        ".hopsworks_certs"
+    )
     os.makedirs(cert_folder, exist_ok=True)
 
+    import hopsworks
     project = hopsworks.login(
         project='aqi_predictor_23',
         host="eu-west.cloud.hopsworks.ai",
         port=443,
-        api_key_value=os.getenv("HOPSWORKS_API_KEY")
+        api_key_value=os.getenv("HOPSWORKS_API_KEY"),
+        cert_folder=cert_folder
     )
 
     fs = project.get_feature_store()
@@ -27,38 +54,34 @@ def get_feature_group():
         version=1,
         primary_key=["timestamp"],
         event_time="timestamp",
-        online_enabled=True,
+        online_enabled=False,
         description="Hourly AQI features - Karachi"
     )
-    return fg
+
+    fg.insert(df)
+    print("Data stored in Hopsworks successfully!")
+
 
 def run_pipeline():
+    print("Fetching raw data...")
+    raw_data = fetch_all_data()
+    print("AQI data fetched successfully!")
 
-    try:
-        print(f"Fetching raw data...")
-        raw_data = fetch_all_data()
-        print(f"AQI data fetched successfully!")
+    print("Parsing and computing features...")
+    df = compute_features(raw_data)
+    print("Features computed successfully!")
+    print(df.to_string())
 
-        print(f"Parsing and computing features...")
-        df = compute_features(raw_data)
-        print(f"Features computed successfully!")
+    is_windows = platform.system() == "Windows"
 
-        print(f"Storing data in Hopsworks...")
-        fg = get_feature_group()
-        print(df.shape)
-        print(df.head())
+    if is_windows:
+        print("Using local SQLite feature store (Windows)...")
+        save_to_sqlite(df)
+    else:
+        print("Using Hopsworks feature store (Linux)...")
+        save_to_hopsworks(df)
 
-        fg.insert(df.head(1))
-
-        print(f"Data stored in Hopsworks successfully!")
-
-        print(f"AQI = {df.aqi.iloc[0]}")
-
-    except Exception as e:
-        print(f"Pipeline failed: {e}")
-        raise
+    print(f"Pipeline complete. AQI = {df['aqi'].iloc[0]}")
 
 if __name__ == "__main__":
     run_pipeline()
-
-

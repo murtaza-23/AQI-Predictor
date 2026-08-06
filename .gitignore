@@ -5,6 +5,10 @@ venv/
 # Environment Variables
 .env
 
+# SQLite Local Feature Store and Hopsworks
+feature_store/
+.hopsworks_certs/
+
 # Python
 __pycache__/
 *.pyc

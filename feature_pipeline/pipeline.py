@@ -63,6 +63,7 @@ def save_to_hopsworks(df):
 
 
 def run_pipeline():
+    
     print("Fetching raw data...")
     raw_data = fetch_all_data()
     print("AQI data fetched successfully!")

@@ -20,6 +20,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+
+          # Did not add these in "requirements.txt" (Linux-only dependencies for Hopsworks)
           pip install hops-deltalake
           pip install confluent-kafka
 

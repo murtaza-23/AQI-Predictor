@@ -5,7 +5,7 @@ venv/
 # Environment Variables
 .env
 
-# SQLite Local Feature Store and Hopsworks
+# SQLite Local Feature Store and Hopsworks certificate
 feature_store/
 .hopsworks_certs/
 

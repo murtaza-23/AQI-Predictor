@@ -11,9 +11,10 @@ def compute_features(data: dict) -> pd.DataFrame:
 
     # Time-based features for hourly and daily AQI patterns
     df["hour"] = df["timestamp"].dt.hour    # (0-23) hour of day
-    df["day"] = df["timestamp"].dt.dayofweek # Mon-Fri (0-6)
+    df["day"] = df["timestamp"].dt.day # Day of Month (1-31)
+    df["day_of_week"] = df["timestamp"].dt.dayofweek
     df["month"] = df["timestamp"].dt.month
-    df["is_weekend"] = (df["day"] >= 5).astype(int)
+    df["is_weekend"] = (df["day_of_week"] >= 5).astype(int)
 
     def get_hour_category(hour):    # predict what part of day it is (Night, Morning, Midday etc)
         if 6 <= hour < 10:
@@ -40,7 +41,7 @@ def compute_features(data: dict) -> pd.DataFrame:
 
     final_columns = ["timestamp", "aqi", "pm2_5", "pm10", "o3", "no2", "co", "so2",
     "temperature", "pressure", "humidity", "wind_speed", "wind_direction",
-    "hour", "day", "month", "is_weekend", "hour_category"]
+    "hour", "day", "day_of_week", "month", "is_weekend", "hour_category"]
 
     return df[final_columns]
 
@@ -51,8 +52,6 @@ def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values("timestamp").reset_index(drop=True)
 
     df["aqi_change_rate"] = df["aqi"].diff()    # current - previous
-
-    df = df.dropna(subset=["aqi_change_rate"]).reset_index(drop=True)
 
     return df
 

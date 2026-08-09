@@ -1,5 +1,8 @@
 name: Feature Pipeline - Hourly AQI Fetch
 
+permissions:
+  contents: write
+
 on: 
   schedule:
     - cron: '0 * * * *'  # cron syntax to fetch features every hour

@@ -13,13 +13,20 @@ def export_feature_group_to_csv():
         )
     os.makedirs(cert_folder, exist_ok=True)
 
+    api_key = os.getenv("HOPSWORKS_API_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "HOPSWORKS_API_KEY is not available in the environment."
+        )
+    
     print("Connecting to Hopsworks...")
 
     project = hopsworks.login(
         project='aqi_predictor_23',
         host="eu-west.cloud.hopsworks.ai",
         port=443,
-        api_key_value=os.getenv("HOPSWORKS_API_KEY"),
+        api_key_value=api_key,
         cert_folder=cert_folder
     )
 

@@ -9,6 +9,10 @@ jobs:
   run:
     runs-on: ubuntu-latest
 
+    env:
+      OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+      HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,9 +30,6 @@ jobs:
           pip install confluent-kafka
 
       - name: Run feature pipeline
-        env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
         run: |
           cd feature_pipeline
           python pipeline.py
@@ -39,8 +40,6 @@ jobs:
           python export_hopsworks.py
 
       - name: Commit updated dataset
-        env:
-          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"

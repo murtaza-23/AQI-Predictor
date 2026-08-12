@@ -38,25 +38,35 @@ def fetch_aqicn_data():
     }
 
 def fetch_open_mateo_data():
-    params = {"latitude": LAT, "longitude": LON, "current": "us_aqi", "timezone": "Asia/Karachi"}
+    params = {
+        "latitude": LAT,
+        "longitude": LON, 
+        "current": [
+            "us_aqi",
+            "pm2_5",
+            "pm10",
+            "ozone",
+            "nitrogen_dioxide",
+            "carbon_monoxide",
+            "sulphur_dioxide"
+        ],
+        "timezone": "UTC"
+    }
 
     response = requests.get(open_mateo_base_url, params=params)
 
     response.raise_for_status()
 
-    data = response.json()
-
-    current = data.get("current", {})
-
-    aqi = current["us_aqi"]
-
-    if aqi is None:
-        raise ValueError(
-            "Open-Meteo did not return a current US AQI value."
-        )
+    data = response.json()["current"]
 
     return {
-        "aqi": int(round(aqi))
+        "aqi": data["us_aqi"],
+        "pm2_5": data["pm2_5"],
+        "pm10": data["pm10"],
+        "o3": data["ozone"],
+        "no2": data["nitrogen_dioxide"],
+        "co": data["carbon_monoxide"],
+        "so2": data["sulphur_dioxide"]
     }
 
 def fetch_openweather_weather_data():
@@ -98,13 +108,12 @@ def fetch_openweather_air_pollution_data():
     }
 
 def fetch_all_data():
-    om_aqi = fetch_open_mateo_data()
+    pollution = fetch_open_mateo_data()
     weather = fetch_openweather_weather_data()
-    pollution = fetch_openweather_air_pollution_data()
 
     merged = {
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        "aqi": om_aqi["aqi"],
+        "aqi": pollution["aqi"],
         "pm2_5": pollution["pm2_5"],
         "pm10": pollution["pm10"],
         "o3": pollution["o3"],

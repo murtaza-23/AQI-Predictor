@@ -106,6 +106,26 @@ def backfill(days: int = 365):
 
     df["hour_category"] = df["hour"].apply(get_hour_category)
 
+    df["pm2_5"] = df["pm2_5"].astype(float)
+    df["pm10"] = df["pm10"].astype(float)
+    df["o3"] = df["o3"].astype(float)
+    df["no2"] = df["no2"].astype(float)
+    df["co"] = df["co"].astype(float)
+    df["so2"] = df["so2"].astype(float)
+
+    df["temperature"] = df["temperature"].astype(float)
+    df["pressure"] = df["pressure"].astype(int)
+    df["humidity"] = df["humidity"].astype(int)
+    df["wind_speed"] = df["wind_speed"].astype(float)
+    df["wind_direction"] = df["wind_direction"].astype(int)
+
+    df["hour"] = df["hour"].astype(int)
+    df["day"] = df["day"].astype(int)
+    df["day_of_week"] = df["day_of_week"].astype(int)
+    df["month"] = df["month"].astype(int)
+    df["is_weekend"] = df["is_weekend"].astype(int)
+    df["hour_category"] = df["hour_category"].astype(int)
+
     # Final column order matching pipeline.py
     final_cols = ["timestamp", "aqi", "pm2_5", "pm10", "o3", "no2", "co", "so2",
     "temperature", "pressure", "humidity", "wind_speed", "wind_direction",

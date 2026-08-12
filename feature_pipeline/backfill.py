@@ -77,13 +77,15 @@ def backfill(days: int = 365):
 
     # Fill missing pollutants with forward fill then 0
     pollution_data = ["pm2_5", "pm10", "o3", "no2", "co", "so2"]
-    df[pollution_data] = df[pollution_data].fillna(method="ffill").fillna(0)
+    df[pollution_data] = df[pollution_data].ffill().fillna(0.0).astype(float)
 
     print(f"Open-Meteo rows fetched: {len(df)}")
 
     # Add historical weather columns as 0 since OpenWeather weather hidtory requires paid plan
-    for col in ["temperature","pressure","humidity","wind_speed","wind_direction"]:
-        df[col] = 0
+    weather_data = ["temperature", "pressure", "humidity", "wind_speed", "wind_direction"]
+
+    for col in weather_data:
+        df[col] = 0.0
 
     # Add time features (reusing same logic as done in parse_features.py/compute_features)
     df["timestamp"] = pd.to_datetime(df["timestamp"])

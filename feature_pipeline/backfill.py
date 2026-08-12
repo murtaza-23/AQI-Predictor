@@ -82,10 +82,11 @@ def backfill(days: int = 365):
     print(f"Open-Meteo rows fetched: {len(df)}")
 
     # Add historical weather columns as 0 since OpenWeather weather hidtory requires paid plan
-    weather_data = ["temperature", "pressure", "humidity", "wind_speed", "wind_direction"]
-
-    for col in weather_data:
-        df[col] = 0.0
+    df["temperature"] = 0.0
+    df["pressure"] = 0
+    df["humidity"] = 0
+    df["wind_speed"] = 0.0
+    df["wind_direction"] = 0
 
     # Add time features (reusing same logic as done in parse_features.py/compute_features)
     df["timestamp"] = pd.to_datetime(df["timestamp"])

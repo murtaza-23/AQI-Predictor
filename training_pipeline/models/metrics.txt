@@ -1,0 +1,5 @@
+Best model: Ridge
+RMSE: 4.1880
+MAE: 2.4367
+R²: 0.9415
+Trained at: 2026-08-16 13:30:00.489318

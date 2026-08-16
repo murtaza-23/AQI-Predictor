@@ -19,3 +19,5 @@ __pycache__/
 # OS Files
 .DS_Store
 Thumbs.db
+
+training_pipeline/models/*.pkl

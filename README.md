@@ -21,11 +21,11 @@ The system automatically:
 - Scikit-learn
 - TensorFlow
 - Streamlit
-- Flask
+- FastAPI/Flask
 - GitHub Actions
 - Hopsworks / Vertex AI
 - SHAP
-- OpenWeather API / AQICN API
+- OpenWeather API / AQICN API (or alternatives)
 
 ## Project Structure
 

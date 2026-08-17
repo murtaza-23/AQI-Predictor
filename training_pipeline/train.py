@@ -164,19 +164,46 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+# Evaluate
+def evaluate_model(name, model, X_train, X_test, y_train, y_test):
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+
+    rmse = np.sqrt(mean_squared_error(y_test, preds))
+    mae = mean_absolute_error(y_test, preds)
+    r2 = r2_score(y_test, preds)
+
+    # Overfitting check
+    train_r2 = r2_score(y_train, model.predict(X_train))
+    gap = abs(train_r2 - r2)
+
+    print(f"\n{name}")
+    print(f"RMSE: {rmse:.4f}  MAE: {mae:.4f}  R²: {r2:.4f}")
+    print(f"Overfit gap: {gap:.4f}")
+
+    return {
+        "name": name,
+        "model": model,
+        "rmse": rmse,
+        "mae": mae,
+        "r2": r2,
+        "preds": preds,
+        "y_test": y_test,
+    }
+
 # Plot results
 def plot_actual_vs_predicted(results: dict, best_name: str):
 
     best = results[best_name]
-    y_val = np.asarray(best["y_val"])
+    y_test = np.asarray(best["y_test"])
     preds = np.asarray(best["preds"])
 
-    n = min(200, len(y_val))
+    n = min(200, len(y_test))
     x = np.arange(n)
 
     plt.figure(figsize=(12, 5))
 
-    plt.plot(x, y_val[:n], label="Actual AQI", color="blue", linewidth=1.5)
+    plt.plot(x, y_test[:n], label="Actual AQI", color="blue", linewidth=1.5)
 
     plt.plot(x, preds[:n], label=f"Predicted AQI ({best_name})", color="red", linewidth=1.5, linestyle="--")
 
@@ -230,16 +257,16 @@ def plot_model_comparison(results: dict):
     print(f"Saved: {path}")
 
 
-def plot_shap(model, X_val, feature_names):
+def plot_shap(model, X_test, feature_names):
 
     print("\nComputing SHAP values...")
 
     explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_val)
+    shap_values = explainer.shap_values(X_test)
 
     plt.figure()
 
-    shap.summary_plot(shap_values, X_val, feature_names=feature_names, show=False)
+    shap.summary_plot(shap_values, X_test, feature_names=feature_names, show=False)
 
     plt.title("SHAP Feature Importance", fontsize=13, fontweight="bold")
 
@@ -336,9 +363,6 @@ def train():
     print(f"X shape: {X.shape}, y shape: {y.shape}")
     print(f"AQI range in training: {y.min()} to {y.max()}, mean: {y.mean():.1f}")
  
-    # Train models
-    print("\nTraining models...")
-
     models = {
         "Ridge": Pipeline([
             ("scaler", StandardScaler()),
@@ -370,102 +394,112 @@ def train():
 
     tscv = TimeSeriesSplit(n_splits=5)
 
-    cv_results = {}
-    final_fold_results = {}
+    selection_metrics = {}
+    final_results = {}
 
-    for name, model in models.items():
+    final_train_idx = None
+    final_val_idx = None
 
-        fold_rmses = []
-        fold_maes = []
-        fold_r2s = []
+    for fold, (train_idx, test_idx) in enumerate(tscv.split(X), start=1):
 
-        print(f"\n{name}")
+        if fold == 1:
+            continue
 
-        for fold, (train_idx, val_idx) in enumerate(tscv.split(X), start=1):
+        print(f"\nFold {fold}: ")
+        print(f"train={len(train_idx)}")
+        print(f"Test/validation={len(test_idx)}")
+    
+        X_train = X.iloc[train_idx]
+        X_test = X.iloc[test_idx]
 
-            X_train = X.iloc[train_idx]
-            X_val = X.iloc[val_idx]
-
-            y_train = y.iloc[train_idx]
-            y_val = y.iloc[val_idx]
-
-            model.fit(X_train, y_train)
-
-            predictions = model.predict(X_val)
-
-            rmse = np.sqrt(mean_squared_error(y_val, predictions))
-            mae = mean_absolute_error(y_val, predictions)
-            r2 = r2_score(y_val, predictions)
-
-            # Persistence baseline for this fold
-            naive_predictions = (X_val["aqi_lag_1h"].values)
-            naive_rmse = np.sqrt(mean_squared_error(y_val, naive_predictions))
-
-            fold_rmses.append(rmse)
-            fold_maes.append(mae)
-            fold_r2s.append(r2)
-
-            print(f"\nFold {fold}:")
-            print(f"RMSE = {rmse:.2f}")
-            print(f"MAE = {mae:.2f}")
-            print(f"R² = {r2:.4f}")
-            print(f"Baseline RMSE = {naive_rmse:.2f}")
+        y_train = y.iloc[train_idx]
+        y_test = y.iloc[test_idx]
 
         if fold == tscv.n_splits:
-            final_fold_results[name] = {
-                "name": name,
-                "model": model,
-                "rmse": rmse,
-                "mae": mae,
-                "r2": r2,
-                "preds": predictions,
-                "y_val": y_val
-            }
+            final_train_idx = train_idx
+            final_test_idx = test_idx
 
-        cv_results[name] = {
-            "mean_rmse": np.mean(fold_rmses),
-            "std_rmse": np.std(fold_rmses),
-            "mean_mae": np.mean(fold_maes),
-            "mean_r2": np.mean(fold_r2s)
+        for name, model in models.items():
+
+            result = evaluate_model(name, model, X_train, X_test, y_train, y_test)
+
+            baseline_predictions = X_test["aqi_lag_1h"].values
+            baseline_rmse = np.sqrt(mean_squared_error(y_test, baseline_predictions))
+            print(f"Baseline RMSE: {baseline_rmse:.4f}")
+
+            if fold < tscv.n_splits:
+                if name not in selection_metrics:
+                    selection_metrics[name] = {
+                        "rmses": [],
+                        "maes": [],
+                        "r2s": [],
+                        "baseline_rmses": []
+                    }
+                selection_metrics[name]["rmses"].append(result["rmse"])
+                selection_metrics[name]["maes"].append(result["mae"])
+                selection_metrics[name]["r2s"].append(result["r2"])
+                selection_metrics[name]["baseline_rmses"].append(baseline_rmse)
+
+            else:
+                final_results[name] = result
+                final_results[name]["baseline_rmse"] = (baseline_rmse)
+
+    selection_summary = {}
+
+    for name, metrics in selection_metrics.items():
+
+        mean_rmse = np.mean(metrics["rmses"])
+        std_rmse = np.std(metrics["rmses"])
+        mean_mae = np.mean(metrics["maes"])
+        mean_r2 = np.mean(metrics["r2s"])
+        mean_baseline_rmse = np.mean(metrics["baseline_rmses"])   
+
+        selection_summary[name] = {
+            "mean_rmse": mean_rmse,
+            "std_rmse": std_rmse,
+            "mean_mae": mean_mae,
+            "mean_r2": mean_r2,
+            "mean_baseline_rmse": mean_baseline_rmse
         }
 
-        print(f"\nMean RMSE: {cv_results[name]['mean_rmse']:.2f} +/- {cv_results[name]['std_rmse']:.2f}")
-        print(f"Mean MAE: {cv_results[name]['mean_mae']:.2f}")
-        print(f"Mean R²: {cv_results[name]['mean_r2']:.4f}")
+        print(f"\n{name}")
+        print(f"Mean RMSE: {mean_rmse:.4f} +/- {std_rmse:.4f}")
+        print(f"Mean MAE: {mean_mae:.4f}")
+        print(f"Mean R²: {mean_r2:.4f}")
+        print(f"Mean baseline RMSE: {mean_baseline_rmse:.4f}")    
 
     # Select best model by mean CV RMSE
-    best_name = min(cv_results, key=lambda name: cv_results[name]["mean_rmse"])
-    print(f"\nBest model from TimeSeriesSplit: {best_name}" )
+    best_name = min(selection_summary, key=lambda name: selection_summary[name]["mean_rmse"])
+    print(f"\nBest model from TimeSeriesSplit (folds 2-4): {best_name}")
 
-    # Train best model on all available data
+    best_final = final_results[best_name]
+
+    final_rmse = best_final["rmse"]
+    final_mae = best_final["mae"]
+    final_r2 = best_final["r2"]
+    final_baseline_rmse = best_final["baseline_rmse"]
+    final_improvement = ((final_baseline_rmse - final_rmse) / final_baseline_rmse * 100)
+
+    print(f"Selected model: {best_name}")
+    print(f"Final RMSE: {final_rmse:.4f}")
+    print(f"Final MAE: {final_mae:.4f}")
+    print(f"Final R²: {final_r2:.4f}")
+    print(f"Final persistence baseline RMSE: {final_baseline_rmse:.4f}")
+    print(f"Improvement over persistence baseline: {final_improvement:.1f}%")
+
+    # Train best final model on all available data
+    print(f"Retraining {best_name} on all {len(X)} rows")
+
     best_model = models[best_name]
 
     best_model.fit(X, y)
 
-    print(f"{best_name} retrained on all {len(X)} observations.")
-
-    baseline_rmses = []
-
-    for train_idx, val_idx in tscv.split(X):
-
-        X_val = X.iloc[val_idx]
-        y_val = y.iloc[val_idx]
-
-        baseline_predictions = (X_val["aqi_lag_1h"].values)
-        baseline_rmse = np.sqrt(mean_squared_error(y_val, baseline_predictions))
-        baseline_rmses.append(baseline_rmse)
-
-    mean_baseline_rmse = np.mean(baseline_rmses)
-
-    print(f"\nPersistence baseline mean RMSE: {mean_baseline_rmse:.2f}")
-    print(f"Best model mean CV RMSE: {cv_results[best_name]['mean_rmse']:.2f}")
-    improvement = ((mean_baseline_rmse - cv_results[best_name]["mean_rmse"]) / mean_baseline_rmse * 100)
-    print(f"Improvement over persistence baseline: {improvement:.1f}%")
+    print("model training complete!")
 
     # Plots
     print("\nGenerating plots...")
-    plot_actual_vs_predicted(final_fold_results, best_name)
-    plot_model_comparison(final_fold_results)
+    plot_actual_vs_predicted(final_results, best_name)
+    plot_model_comparison(final_results)
 
     # SHAP (only works on tree models)
     shap_model = best_model
@@ -474,28 +508,28 @@ def train():
         # Use Random Forest for SHAP if Ridge is the best model out of all
         shap_model = models["RandomForest"]
         shap_model.fit(X, y)
-        print("Note: SHAP uses Random Forest (Ridge is not tree-based)")
-
-    plot_input = X.iloc[-min(1000, len(X)):]
+        print("Note: SHAP uses Random Forest because Ridge is not tree-based")
 
     # Get raw model from Pipeline if needed
     if hasattr(shap_model, "named_steps"):
         shap_model = shap_model.named_steps["model"]
 
-    plot_shap(shap_model, plot_input, FEATURES)
+    X_shap = X.iloc[-min(1000, len(X)):]
 
-    metrics_for_registry = {
-        "rmse": cv_results[best_name]["mean_rmse"],
-        "mae": cv_results[best_name]["mean_mae"],
-        "r2": cv_results[best_name]["mean_r2"]
+    plot_shap(shap_model, X_shap, FEATURES)
+
+    final_metrics = {
+        "rmse": final_rmse,
+        "mae": final_mae,
+        "r2": final_r2
     }
 
     # Save model
     print("\nSaving model...")
-    save_model_locally(best_model, best_name, metrics_for_registry)
+    save_model_locally(best_model, best_name, final_metrics)
 
     if platform.system() != "Windows":
-        save_model_to_hopsworks(best_model, best_name, metrics_for_registry)
+        save_model_to_hopsworks(best_model, best_name, final_metrics)
 
 if __name__ == "__main__":
     train()

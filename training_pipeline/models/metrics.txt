@@ -1,5 +1,5 @@
-Best model: Ridge
-RMSE: 4.1604
-MAE: 2.4117
-RÂ²: 0.9422
-Trained at: 2026-08-17 03:09:06.104776
+Best model: XGBoost
+RMSE: 0.5985
+MAE: 0.4476
+R²: 0.9936
+Trained at: 2026-08-16 16:45:31.047856

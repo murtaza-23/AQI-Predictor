@@ -400,6 +400,10 @@ def train():
     final_train_idx = None
     final_val_idx = None
 
+    # Fold 1: low-data warm-up fold, excluded from model selection.
+    # Folds 2-4: model selection.
+    # Fold 5: final unseen evaluation.
+
     for fold, (train_idx, test_idx) in enumerate(tscv.split(X), start=1):
 
         if fold == 1:

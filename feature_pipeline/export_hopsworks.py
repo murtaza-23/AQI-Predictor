@@ -41,14 +41,7 @@ def export_feature_group_to_csv():
 
     print("Reading feature group...")
 
-    df = fg.read(
-        dataframe_type="pandas",
-        read_options={
-            "arrow_flight_config": {
-                "timeout": 900
-            }
-        }
-    )
+    df = fg.read()
 
     print(f"Retrived {len(df)} rows")
 

@@ -1,0 +1,51 @@
+{
+    "best_model_name": "XGBoost",
+    "rmse": 0.592,
+    "mae": 0.4473,
+    "r2": 0.9945,
+    "trained_at": "2026-08-20 22:09:18.620966",
+    "features": [
+        "pm2_5",
+        "pm10",
+        "o3",
+        "no2",
+        "co",
+        "so2",
+        "hour",
+        "day",
+        "day_of_week",
+        "month",
+        "is_weekend",
+        "hour_category",
+        "aqi_lag_1h",
+        "aqi_lag_3h",
+        "aqi_lag_24h",
+        "aqi_lag_48h",
+        "aqi_lag_72h",
+        "aqi_change_prev_hour",
+        "aqi_rolling_3h",
+        "aqi_rolling_24h",
+        "pm2_5_lag_1h",
+        "pm2_5_lag_24h",
+        "pm10_lag_1h",
+        "pm10_lag_24h",
+        "o3_lag_1h",
+        "o3_lag_24h",
+        "no2_lag_1h",
+        "no2_lag_24h",
+        "co_lag_1h",
+        "co_lag_24h",
+        "so2_lag_1h",
+        "so2_lag_24h"
+    ],
+    "features_count": 32,
+    "model_comparison": [
+        {
+            "model": "XGBoost",
+            "rmse": 0.592,
+            "mae": 0.4473,
+            "r2": 0.9945,
+            "status": "Best Model"
+        }
+    ]
+}

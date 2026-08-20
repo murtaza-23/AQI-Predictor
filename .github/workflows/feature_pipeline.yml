@@ -11,27 +11,24 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 45    # hard cap — prevents silent zombie jobs
+    timeout-minutes: 45 
 
     env:
       OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
       HOPSWORKS_API_KEY:   ${{ secrets.HOPSWORKS_API_KEY }}
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1         # shallow clone is enough
+          fetch-depth: 1      
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 2. Python ────────────────────────────────────────────────────────────
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'            # cache pip dependencies between runs
+          cache: 'pip'         
 
-      # ── 3. Install dependencies ───────────────────────────────────────────────
       - name: Install dependencies
         run: |
           pip install --upgrade pip
@@ -40,21 +37,18 @@ jobs:
           # Linux-only Hopsworks dependencies (not in requirements.txt)
           pip install hops-deltalake confluent-kafka
 
-      # ── 4. Run feature pipeline (fetch & push to Hopsworks) ──────────────────
       - name: Run feature pipeline
         timeout-minutes: 25
         run: |
           cd feature_pipeline
           python pipeline.py
 
-      # ── 5. Export latest data from Hopsworks → CSV ───────────────────────────
       - name: Export Hopsworks data
         timeout-minutes: 15
         run: |
           cd feature_pipeline
           python export_hopsworks.py
 
-      # ── 6. Commit CSV if it changed ───────────────────────────────────────────
       - name: Commit updated dataset
         run: |
           git config --global user.name  "github-actions[bot]"

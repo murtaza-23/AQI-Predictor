@@ -21,3 +21,5 @@ __pycache__/
 Thumbs.db
 
 training_pipeline/models/*.pkl
+
+.streamlit/secrets.toml

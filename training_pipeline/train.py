@@ -290,16 +290,13 @@ def plot_shap(model, X_test, feature_names):
 
 # Save model
 def save_model_locally(model, name: str, metrics: dict):
-
+    import json
     path = os.path.join(MODEL_DIR, "best_model.pkl")
-
     joblib.dump(model, path)
-
     print(f"Model saved locally: {path}")
 
-    # Save metrics as a small text file for reference
+    # Save metrics as a text file for reference
     metrics_path = os.path.join(MODEL_DIR, "metrics.txt")
-
     with open(metrics_path, "w") as f:
         f.write(f"Best model: {name}\n")
         f.write(f"RMSE: {metrics['rmse']:.4f}\n")
@@ -307,7 +304,24 @@ def save_model_locally(model, name: str, metrics: dict):
         f.write(f"R²: {metrics['r2']:.4f}\n")
         f.write(f"Trained at: {datetime.utcnow()}\n")
 
-    print(f"Metrics saved: {metrics_path}")
+    # Save metrics as structured JSON for web app / API ingestion
+    json_path = os.path.join(MODEL_DIR, "metrics.json")
+    metrics_data = {
+        "best_model_name": name,
+        "rmse": round(metrics['rmse'], 4),
+        "mae": round(metrics['mae'], 4),
+        "r2": round(metrics['r2'], 4),
+        "trained_at": str(datetime.utcnow()),
+        "features": FEATURES,
+        "features_count": len(FEATURES),
+        "model_comparison": [
+            {"model": name, "rmse": round(metrics['rmse'], 4), "mae": round(metrics['mae'], 4), "r2": round(metrics['r2'], 4), "status": "Best Model"}
+        ]
+    }
+    with open(json_path, "w") as f:
+        json.dump(metrics_data, f, indent=4)
+
+    print(f"Metrics saved: {metrics_path} and {json_path}")
 
 
 def save_model_to_hopsworks(model, name: str, metrics: dict):

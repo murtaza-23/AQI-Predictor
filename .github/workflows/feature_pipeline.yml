@@ -3,52 +3,70 @@ name: Feature Pipeline - Hourly AQI Fetch
 permissions:
   contents: write
 
-on: 
+on:
   schedule:
-    - cron: '0 * * * *'  # cron syntax to fetch features every hour
+    - cron: '0 * * * *'   # every hour
   workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 45    # hard cap — prevents silent zombie jobs
 
     env:
       OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-      HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+      HOPSWORKS_API_KEY:   ${{ secrets.HOPSWORKS_API_KEY }}
 
     steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1         # shallow clone is enough
+          token: ${{ secrets.GITHUB_TOKEN }}
 
+      # ── 2. Python ────────────────────────────────────────────────────────────
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'            # cache pip dependencies between runs
 
+      # ── 3. Install dependencies ───────────────────────────────────────────────
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install -r requirements.txt
 
-          # Did not add these in "requirements.txt" (Linux-only dependencies for Hopsworks)
-          pip install hops-deltalake
-          pip install confluent-kafka
+          # Linux-only Hopsworks dependencies (not in requirements.txt)
+          pip install hops-deltalake confluent-kafka
 
+      # ── 4. Run feature pipeline (fetch & push to Hopsworks) ──────────────────
       - name: Run feature pipeline
+        timeout-minutes: 25
         run: |
           cd feature_pipeline
           python pipeline.py
 
+      # ── 5. Export latest data from Hopsworks → CSV ───────────────────────────
       - name: Export Hopsworks data
+        timeout-minutes: 15
         run: |
           cd feature_pipeline
           python export_hopsworks.py
 
+      # ── 6. Commit CSV if it changed ───────────────────────────────────────────
       - name: Commit updated dataset
         run: |
-          git config --global user.name "github-actions[bot]"
+          git config --global user.name  "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add data/aqi_features.csv
 
-          git diff --cached --quiet || git commit -m "data: update AQI feature dataset"
-
-          git push
+          # Only commit when the file actually changed
+          if git diff --cached --quiet; then
+            echo "No changes to data/aqi_features.csv — skipping commit."
+          else
+            git commit -m "data: update AQI feature dataset [skip ci]"
+            git push
+            echo "Dataset committed and pushed."
+          fi

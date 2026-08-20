@@ -41,10 +41,13 @@ def export_feature_group_to_csv():
 
     print("Reading feature group...")
 
-    # Force Hive/SQL path — Arrow Flight (gRPC port 5005) is unreliable on GitHub Actions runners
     df = fg.read(
         dataframe_type="pandas",
-        read_options={"use_hive": True}
+        read_options={
+            "arrow_flight_config": {
+                "timeout": 900
+            }
+        }
     )
 
     print(f"Retrived {len(df)} rows")

@@ -74,9 +74,19 @@ def save_to_hopsworks(df):
         description="Hourly AQI features - Karachi"
     )
 
-    fg.insert(df)
-
-    print("Data stored in Hopsworks successfully!")
+    import time
+    for attempt in range(1, 4):
+        try:
+            fg.insert(df)
+            print("Data stored in Hopsworks successfully!")
+            break
+        except Exception as e:
+            print(f"Insert attempt {attempt}/3 failed: {e}")
+            if attempt < 3:
+                print("Waiting 30s before retry...")
+                time.sleep(30)
+            else:
+                raise
 
 
 def run_pipeline():

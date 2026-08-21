@@ -90,7 +90,7 @@ def load_data() -> pd.DataFrame:
             version=1
         )
       
-        df = fg.read()
+        df = fs.sql("SELECT * FROM `aqi_features`")
 
     df["timestamp"] = pd.to_datetime(df["timestamp"])
 

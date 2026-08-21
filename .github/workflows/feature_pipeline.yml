@@ -39,6 +39,11 @@ jobs:
           cd feature_pipeline
           python pipeline.py
 
+      - name: Export Data From Hopsworks
+        run: |
+          cd feature_pipeline
+          python export_hopsworks.py
+
       - name: Commit updated dataset
         run: |
           git config --global user.name  "github-actions[bot]"

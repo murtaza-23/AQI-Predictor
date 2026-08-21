@@ -88,13 +88,10 @@ def load_data() -> pd.DataFrame:
             version=1
         )
 
+      
         df = fg.read(
             dataframe_type="pandas",
-            read_options={
-                "arrow_flight_config": {
-                "timeout": 900
-                }
-            }
+            read_options={"use_hive": True}             
         )
 
     df["timestamp"] = pd.to_datetime(df["timestamp"])

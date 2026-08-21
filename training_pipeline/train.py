@@ -87,7 +87,6 @@ def load_data() -> pd.DataFrame:
             name="aqi_features",
             version=1
         )
-
       
         df = fg.read(
             dataframe_type="pandas",

@@ -98,7 +98,7 @@ def append_to_csv(df):
         # the same hour (e.g. manual re-trigger)
         combined = pd.concat([existing, df], ignore_index=True)
         combined = combined.drop_duplicates(subset=["timestamp"], keep="last")
-        combined = combined.sort_values("timestamo").reset_index(drop=True)
+        combined = combined.sort_values("timestamp").reset_index(drop=True)
     else:
         combined = df
 

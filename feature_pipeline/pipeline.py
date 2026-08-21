@@ -85,15 +85,15 @@ def save_to_hopsworks(df):
                 print("Waiting 30s before retry...")
                 time.sleep(30)
             else:
-                print("Hopsworks insert failed after 3 attempts. "
-                      "Continuing — CSV will still be updated.")
+                print("Hopsworks insert failed after 3 attempts.")
+                raise RuntimeError("Could not store features in Hopsworks.")
 
 def append_to_csv(df):
 
     os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
 
     if os.path.exists(CSV_PATH):
-        existing = pd.read_csv(CSV_PATH)
+        existing = pd.read_csv(CSV_PATH, parse_dates=["timestamp"])
         # Avoid duplicate timestamp rows if pipeline runs twice for
         # the same hour (e.g. manual re-trigger)
         combined = pd.concat([existing, df], ignore_index=True)

@@ -41,7 +41,11 @@ def export_feature_group_to_csv():
         try:
             df = fg.read(
                 dataframe_type="pandas",
-                read_options={"use_hive": True}             
+                read_options={
+                    "arrow_flight_config": {
+                    "timeout": 900
+                    }
+                }
             )
             break
         except Exception as e:

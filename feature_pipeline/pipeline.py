@@ -10,11 +10,10 @@ from parse_features import compute_features
 
 load_dotenv()
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Path to local SQLite feature store (when running locally on Windows)
-DB_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "..", "feature_store", "aqi_features.db"
-)
+DB_PATH = os.path.join(BASE_DIR, "feature_store", "aqi_features.db")
+CSV_PATH = os.path.join(BASE_DIR, "data", "aqi_features.csv")
 
 def save_to_sqlite(df):
     
@@ -86,7 +85,25 @@ def save_to_hopsworks(df):
                 print("Waiting 30s before retry...")
                 time.sleep(30)
             else:
-                raise
+                print("Hopsworks insert failed after 3 attempts. "
+                      "Continuing — CSV will still be updated.")
+
+def append_to_csv(df):
+
+    os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
+
+    if os.path.exists(CSV_PATH):
+        existing = pd.read_csv(CSV_PATH)
+        # Avoid duplicate timestamp rows if pipeline runs twice for
+        # the same hour (e.g. manual re-trigger)
+        combined = pd.concat([existing, df], ignore_index=True)
+        combined = combined.drop_duplicates(subset=["timestamp"], keep="last")
+        combined = combined.sort_values("timestamo").reset_index(drop=True)
+    else:
+        combined = df
+
+    combined.to_csv(CSV_PATH, index=False)
+    print(f"CSV updated: {len(combined)} total rows in {CSV_PATH}")
 
 
 def run_pipeline():
@@ -108,6 +125,7 @@ def run_pipeline():
         print(f"Platform Detected {platform.system()}")
         print("Using Hopsworks feature store...")
         save_to_hopsworks(df)
+        append_to_csv(df)
 
     print(f"\nPipeline complete!")
     print(f"Current AQI = {df['aqi'].iloc[0]}")

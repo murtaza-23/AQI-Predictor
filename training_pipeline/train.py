@@ -83,8 +83,6 @@ def load_data() -> pd.DataFrame:
 
         fs = project.get_feature_store()
 
-        fs.engine = "hive" 
-
         fg = fs.get_feature_group(
             name="aqi_features",
             version=1

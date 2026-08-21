@@ -88,24 +88,6 @@ def save_to_hopsworks(df):
                 print("Hopsworks insert failed after 3 attempts.")
                 raise RuntimeError("Could not store features in Hopsworks.")
 
-def append_to_csv(df):
-
-    os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
-
-    if os.path.exists(CSV_PATH):
-        existing = pd.read_csv(CSV_PATH, parse_dates=["timestamp"])
-        # Avoid duplicate timestamp rows if pipeline runs twice for
-        # the same hour (e.g. manual re-trigger)
-        combined = pd.concat([existing, df], ignore_index=True)
-        combined = combined.drop_duplicates(subset=["timestamp"], keep="last")
-        combined = combined.sort_values("timestamp").reset_index(drop=True)
-    else:
-        combined = df
-
-    combined.to_csv(CSV_PATH, index=False)
-    print(f"CSV updated: {len(combined)} total rows in {CSV_PATH}")
-
-
 def run_pipeline():
     
     print("Fetching raw data...")
@@ -125,7 +107,6 @@ def run_pipeline():
         print(f"Platform Detected {platform.system()}")
         print("Using Hopsworks feature store...")
         save_to_hopsworks(df)
-        append_to_csv(df)
 
     print(f"\nPipeline complete!")
     print(f"Current AQI = {df['aqi'].iloc[0]}")

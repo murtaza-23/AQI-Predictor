@@ -88,9 +88,7 @@ def load_data() -> pd.DataFrame:
             version=1
         )
       
-        df = fg.read(
-            read_options={"arrow_flight": False}
-        )
+        df = fg.read(arrow_flight=False)
 
     df["timestamp"] = pd.to_datetime(df["timestamp"])
 
@@ -100,7 +98,6 @@ def load_data() -> pd.DataFrame:
     print(f"max={df['aqi'].max()}")
     print(f"mean={df['aqi'].mean():.1f}")
     return df
-
 
 # Clean Data
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:

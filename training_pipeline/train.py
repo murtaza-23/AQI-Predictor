@@ -79,6 +79,7 @@ def load_data() -> pd.DataFrame:
             port=443,
             api_key_value=api_key,
             cert_folder=cert_folder
+            engine="python"
         )
 
         fs = project.get_feature_store()
@@ -87,7 +88,7 @@ def load_data() -> pd.DataFrame:
             name="aqi_features",
             version=1
         )
-      
+    
         df = fg.read(
             dataframe_type="pandas",
             read_options={
@@ -382,7 +383,7 @@ def train():
     print(f"Target: {TARGET}")
     print(f"X shape: {X.shape}, y shape: {y.shape}")
     print(f"AQI range in training: {y.min()} to {y.max()}, mean: {y.mean():.1f}")
- 
+
     models = {
         "Ridge": Pipeline([
             ("scaler", StandardScaler()),

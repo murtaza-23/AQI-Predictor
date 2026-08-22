@@ -14,6 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Path to local SQLite feature store (when running locally on Windows)
 DB_PATH = os.path.join(BASE_DIR, "feature_store", "aqi_features.db")
 CSV_PATH = os.path.join(BASE_DIR, "data", "aqi_features.csv")
+PARQUET_PATH = os.path.join(BASE_DIR, "data", "aqi_features.parquet")
 
 def save_to_sqlite(df):
     
@@ -88,22 +89,30 @@ def save_to_hopsworks(df):
                 print("Hopsworks insert failed after 3 attempts.")
                 raise RuntimeError("Could not store features in Hopsworks.")
 
-def append_to_csv(df):
+def append_to_store(df):
 
-    os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
+    """Writes this hour's row to the Feast offline source (Parquet)
+    and pushes it into the Feast online store for fast serving."""
+    df = df.copy()
+    df["location_id"] = "karachi"
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
 
-    if os.path.exists(CSV_PATH):
-        existing = pd.read_csv(CSV_PATH, parse_dates=["timestamp"])
-        # Avoid duplicate timestamp rows if pipeline runs twice for
-        # the same hour (e.g. manual re-trigger)
+    # Offline store — Feast's FileSource literally reads this Parquet
+    if os.path.exists(PARQUET_PATH):
+        existing = pd.read_parquet(PARQUET_PATH)
         combined = pd.concat([existing, df], ignore_index=True)
         combined = combined.drop_duplicates(subset=["timestamp"], keep="last")
         combined = combined.sort_values("timestamp").reset_index(drop=True)
     else:
         combined = df
+    combined.to_parquet(PARQUET_PATH, index=False)
+    print(f"Feast offline store updated: {len(combined)} rows")
 
-    combined.to_csv(CSV_PATH, index=False)
-    print(f"CSV updated: {len(combined)} total rows in {CSV_PATH}")
+    # Online store — push just this latest row for fast web app reads
+    from feast import FeatureStore
+    store = FeatureStore(repo_path=os.path.join(BASE_DIR, "feature_repo"))
+    store.write_to_online_store(feature_view_name="aqi_features", df=df)
+    print("Feast online store updated with latest row")
 
 def run_pipeline():
     
@@ -124,7 +133,7 @@ def run_pipeline():
         print(f"Platform Detected {platform.system()}")
         print("Using Hopsworks feature store...")
         save_to_hopsworks(df)
-        append_to_csv(df)
+        append_to_store(df)
 
     print(f"\nPipeline complete!")
     print(f"Current AQI = {df['aqi'].iloc[0]}")

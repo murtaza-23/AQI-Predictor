@@ -50,16 +50,12 @@ def load_data() -> pd.DataFrame:
             print(f"Loading data from CSV: {CSV_PATH}")
             df = pd.read_csv(CSV_PATH)
         else:
-            raise FileNotFoundError(
-                f"CSV not found at {CSV_PATH}. "
-                "Make sure data/aqi_features.csv exists in your repo."
-            )
+            raise FileNotFoundError(f"CSV not found at {CSV_PATH}")
 
     else:
         import hopsworks
+        import time
     
-        print("Reading data from Hopsworks...")
-
         cert_folder = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             ".hopsworks_certs"
@@ -69,9 +65,7 @@ def load_data() -> pd.DataFrame:
         api_key = os.getenv("HOPSWORKS_API_KEY")
 
         if not api_key:
-            raise RuntimeError(
-                "HOPSWORKS_API_KEY is not available."
-            )
+            raise RuntimeError("HOPSWORKS_API_KEY is not available")
 
         project = hopsworks.login(
             project="aqi_predictor_23",
@@ -89,9 +83,39 @@ def load_data() -> pd.DataFrame:
             version=1
         )
     
-        df = fg.read(
-            read_options={"use_flight": False}
-        )
+        df = None
+        max_attempts = 5
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                print(f"Read attempt {attempt}/{max_attempts}")
+                df = fg.read(
+                    dataframe_type="pandas",
+                    read_options={
+                        "arrow_flight_config": {
+                            "timeout": 600,
+                            "max_retries": 1,     # stop internal retry storm
+                            "backoff_seconds": 0
+                        }
+                    }
+                )
+                print("Read succeeded.")
+                break
+            except Exception as e:
+                print(f"Attempt {attempt} failed: {type(e).__name__}: {e}")
+                if attempt < max_attempts:
+                    wait = 60 * attempt  # 60s, 120s, 180s, 240s — real spacing
+                    print(f"Waiting {wait}s before next attempt "
+                          f"(letting the server cool down)...")
+                    time.sleep(wait)
+                else:
+                    print("All Hopsworks read attempts failed. "
+                          "Falling back to CSV.")
+                    if not os.path.exists(CSV_PATH):
+                        raise RuntimeError(
+                            "Hopsworks read failed and no CSV fallback exists."
+                        ) from e
+                    df = pd.read_csv(CSV_PATH)
 
     df["timestamp"] = pd.to_datetime(df["timestamp"])
 

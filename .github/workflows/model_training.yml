@@ -15,7 +15,6 @@ jobs:
 
     env:
       HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-      HOPSWORKS_FEATURE_QUERY_SERVICE_DISABLE: "true" 
 
     steps:
       - name: Checkout repository

@@ -78,7 +78,7 @@ def load_data() -> pd.DataFrame:
             host="eu-west.cloud.hopsworks.ai",
             port=443,
             api_key_value=api_key,
-            cert_folder=cert_folder
+            cert_folder=cert_folder,
             engine="python"
         )
 

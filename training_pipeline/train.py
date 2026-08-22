@@ -57,8 +57,12 @@ def load_data() -> pd.DataFrame:
 
     else:
         import hopsworks
+        from datetime import datetime, timedelta
 
-        print("Loading data from Hopsworks...")
+        end_time = datetime.utcnow()
+        start_time = end_time - timedelta(days=365)     
+
+        print("Reading data from Hopsworks...")
 
         cert_folder = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -90,6 +94,8 @@ def load_data() -> pd.DataFrame:
         )
     
         df = fg.read(
+            start_time=start_time,
+            end_time=end_time,
             dataframe_type="pandas",
             read_options={
                 "arrow_flight_config": {

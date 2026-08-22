@@ -31,6 +31,11 @@ jobs:
           pip install -r requirements.txt
           pip install hops-deltalake confluent-kafka
 
+      - name: Fix Network MTU for gRPC
+        run: |
+          sudo ip link set dev eth0 mtu 1400 || true
+          sudo ip link set dev docker0 mtu 1400 || true
+
       - name: Train model
         run: |
           python training_pipeline/train.py

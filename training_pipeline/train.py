@@ -57,11 +57,7 @@ def load_data() -> pd.DataFrame:
 
     else:
         import hopsworks
-        from datetime import datetime, timedelta
-
-        end_time = datetime.utcnow()
-        start_time = end_time - timedelta(days=365)     
-
+    
         print("Reading data from Hopsworks...")
 
         cert_folder = os.path.join(
@@ -94,14 +90,8 @@ def load_data() -> pd.DataFrame:
         )
     
         df = fg.read(
-            start_time=start_time,
-            end_time=end_time,
             dataframe_type="pandas",
-            read_options={
-                "arrow_flight_config": {
-                "timeout": 900
-                }
-            }
+            read_options={"use_hive": True}
         )
 
     df["timestamp"] = pd.to_datetime(df["timestamp"])

@@ -23,7 +23,6 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSV_PATH = os.path.join(BASE_DIR, "data", "aqi_features.csv")
-DB_PATH = os.path.join(BASE_DIR, "feature_store", "aqi_features.db")
 MODEL_DIR = os.path.join(BASE_DIR, "training_pipeline", "models")
 PLOTS_DIR = os.path.join(BASE_DIR, "training_pipeline", "plots")
 
@@ -73,7 +72,6 @@ def load_data() -> pd.DataFrame:
             port=443,
             api_key_value=api_key,
             cert_folder=cert_folder,
-            engine="python"
         )
 
         fs = project.get_feature_store()
@@ -84,7 +82,7 @@ def load_data() -> pd.DataFrame:
         )
     
         df = None
-        max_attempts = 5
+        max_attempts = 3
 
         for attempt in range(1, max_attempts + 1):
             try:
@@ -104,7 +102,7 @@ def load_data() -> pd.DataFrame:
             except Exception as e:
                 print(f"Attempt {attempt} failed: {type(e).__name__}: {e}")
                 if attempt < max_attempts:
-                    wait = 60 * attempt  # 60s, 120s, 180s, 240s — real spacing
+                    wait = 60 * attempt  # 60s, 120s ...
                     print(f"Waiting {wait}s before next attempt "
                           f"(letting the server cool down)...")
                     time.sleep(wait)

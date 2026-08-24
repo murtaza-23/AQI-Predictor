@@ -9,6 +9,10 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from dotenv import load_dotenv
 
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit
@@ -18,6 +22,9 @@ from sklearn.pipeline import Pipeline
 
 from xgboost import XGBRegressor
 import shap
+
+torch.manual_seed(42)
+np.random.seed(42)
 
 load_dotenv()
 
@@ -39,6 +46,83 @@ FEATURES = ["pm2_5", "pm10", "o3", "no2", "co", "so2",
             "co_lag_1h", "co_lag_24h", "so2_lag_1h", "so2_lag_24h"]
 
 TARGET = "aqi_next_1h"
+
+# PyTorch LSTM Sequence Helpers
+def create_sequences(X_data, y_data, time_steps=3):
+    X_seq, y_seq = [], []
+    for i in range(len(X_data) - time_steps):
+        X_seq.append(X_data[i : i + time_steps])
+        y_seq.append(y_data[i + time_steps])
+    return np.array(X_seq), np.array(y_seq)
+
+
+class AQILSTM(nn.Module):
+    def __init__(self, input_dim, hidden_dim=64, num_layers=2):
+        super(AQILSTM, self).__init__()
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
+        self.fc = nn.Linear(hidden_dim, 1)
+
+    def forward(self, x):
+        out, _ = self.lstm(x)
+        out = self.fc(out[:, -1, :])
+        return out.squeeze(-1)
+
+
+def evaluate_lstm(X_train_df, X_test_df, y_train_s, y_test_s, time_steps=3, epochs=40, lr=0.001):
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train_df)
+    X_test_scaled = scaler.transform(X_test_df)
+
+    y_train_arr = y_train_s.values
+    y_test_arr = y_test_s.values
+
+    X_train_seq, y_train_seq = create_sequences(X_train_scaled, y_train_arr, time_steps)
+    X_test_seq, y_test_seq = create_sequences(X_test_scaled, y_test_arr, time_steps)
+
+    train_loader = DataLoader(
+        TensorDataset(torch.tensor(X_train_seq, dtype=torch.float32), torch.tensor(y_train_seq, dtype=torch.float32)),
+        batch_size=32, shuffle=True
+    )
+    test_loader = DataLoader(
+        TensorDataset(torch.tensor(X_test_seq, dtype=torch.float32), torch.tensor(y_test_seq, dtype=torch.float32)),
+        batch_size=32, shuffle=False
+    )
+
+    model = AQILSTM(input_dim=X_train_seq.shape[2], hidden_dim=64, num_layers=2)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    model.train()
+    for epoch in range(epochs):
+        for bx, by in train_loader:
+            optimizer.zero_grad()
+            loss = criterion(model(bx), by)
+            loss.backward()
+            optimizer.step()
+
+    model.eval()
+    preds = []
+    with torch.no_grad():
+        for bx, by in test_loader:
+            preds.extend(model(bx).numpy())
+
+    preds = np.array(preds)
+    rmse = np.sqrt(mean_squared_error(y_test_seq, preds))
+    mae = mean_absolute_error(y_test_seq, preds)
+    r2 = r2_score(y_test_seq, preds)
+
+    print(f"\nLSTM")
+    print(f"RMSE: {rmse:.4f}  MAE: {mae:.4f}  R²: {r2:.4f}")
+
+    return {
+        "name": "LSTM",
+        "model": model,
+        "rmse": rmse,
+        "mae": mae,
+        "r2": r2,
+        "preds": preds,
+        "y_test": y_test_seq,
+    }
 
 # Load Data
 def load_data() -> pd.DataFrame:
@@ -91,7 +175,7 @@ def load_data() -> pd.DataFrame:
                     dataframe_type="pandas",
                     read_options={
                         "arrow_flight_config": {
-                            "timeout": 600,
+                            "timeout": 900,
                             "max_retries": 1,     # stop internal retry storm
                             "backoff_seconds": 0
                         }
@@ -181,11 +265,9 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # shift target forward by 1 meaning given everything we know NOW, predict AQI in 1 hour
     df["aqi_next_1h"] = df["aqi"].shift(-1)
-
     df = df.dropna().reset_index(drop=True)
 
     print(f"\nRows after feature engineering: {len(df)}")
-
     return df
 
 # Evaluate
@@ -222,7 +304,7 @@ def plot_actual_vs_predicted(results: dict, best_name: str):
     y_test = np.asarray(best["y_test"])
     preds = np.asarray(best["preds"])
 
-    n = min(200, len(y_test))
+    n = min(500, len(y_test))
     x = np.arange(n)
 
     plt.figure(figsize=(12, 5))
@@ -304,6 +386,56 @@ def plot_shap(model, X_test, feature_names):
 
     print(f"Saved: {path}")
 
+
+def evaluate_multi_horizon(best_model, df: pd.DataFrame, features: list):
+
+    horizons = {"24h (1-Day)": 24, "48h (2-Day)": 48, "72h (3-Day)": 72}
+
+    horizon_results = {}
+
+    for label, step in horizons.items():
+        # Create target shifted by step hours ahead
+        df_h = df.copy()
+        df_h["target_step"] = df_h["aqi"].shift(-step)
+
+        # Baseline: persistence assumes future AQI = current AQI
+        df_h["persistence_baseline"] = df_h["aqi"]
+
+        df_h = df_h.dropna(subset=features + ["target_step"]).reset_index(drop=True)
+
+        X_h = df_h[features]
+        y_h = df_h["target_step"]
+        base_h = df_h["persistence_baseline"]
+
+        # Predict using trained best model
+        preds_h = best_model.predict(X_h)
+
+        model_rmse = np.sqrt(mean_squared_error(y_h, preds_h))
+        model_mae = mean_absolute_error(y_h, preds_h)
+        model_r2 = r2_score(y_h, preds_h)
+
+        base_rmse = np.sqrt(mean_squared_error(y_h, base_h))
+        base_mae = mean_absolute_error(y_h, base_h)
+        base_r2 = r2_score(y_h, base_h)
+
+        improvement = (base_rmse - model_rmse) / base_rmse * 100
+
+        horizon_results[label] = {
+            "model_rmse": model_rmse,
+            "model_mae": model_mae,
+            "model_r2": model_r2,
+            "baseline_rmse": base_rmse,
+            "baseline_mae": base_mae,
+            "baseline_r2": base_r2,
+            "improvement_pct": improvement,
+        }
+
+        print(f"\nHorizon: {label}")
+        print(f"Model -> RMSE: {model_rmse:.4f}  MAE: {model_mae:.4f}  R²: {model_r2:.4f}")
+        print(f"Baseline -> RMSE: {base_rmse:.4f}  MAE: {base_mae:.4f}  R²: {base_r2:.4f}")
+        print(f"Improvement over Persistence: {improvement:.1f}%")
+
+    return horizon_results
 
 # Save model
 def save_model_locally(model, name: str, metrics: dict):
@@ -486,6 +618,16 @@ def train():
                 final_results[name] = result
                 final_results[name]["baseline_rmse"] = (baseline_rmse)
 
+    # --- Evaluate PyTorch LSTM on Final Test Fold ---
+    print("\nTraining Deep Learning Model (LSTM)")
+    X_train_final = X.iloc[final_train_idx]
+    X_test_final = X.iloc[final_test_idx]
+    y_train_final = y.iloc[final_train_idx]
+    y_test_final = y.iloc[final_test_idx]
+
+    lstm_res = evaluate_lstm(X_train_final, X_test_final, y_train_final, y_test_final, time_steps=3)
+    final_results["LSTM"] = lstm_res
+
     selection_summary = {}
 
     for name, metrics in selection_metrics.items():
@@ -559,6 +701,8 @@ def train():
     X_shap = X.iloc[-min(1000, len(X)):]
 
     plot_shap(shap_model, X_shap, FEATURES)
+
+    evaluate_multi_horizon(best_model, df, FEATURES)
 
     final_metrics = {
         "rmse": final_rmse,

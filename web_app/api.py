@@ -15,7 +15,7 @@ MODEL_PATH = os.path.join(BASE_DIR, "training_pipeline", "models", "best_model.p
 
 GITHUB_CSV_URL = (
     "https://raw.githubusercontent.com/"
-    "murtaza-23/AQI-Predictor/main/data/aqi_features.csv"
+    "murtaza-23/HawaNama/main/data/aqi_features.csv"
 )
 
 app = FastAPI(

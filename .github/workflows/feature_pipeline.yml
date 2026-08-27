@@ -50,6 +50,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to data/aqi_features.csv — skipping commit."
           else
+            git commit -m "data: update AQI features dataset [skip ci]"
             git push
             echo "Dataset committed and pushed."
           fi

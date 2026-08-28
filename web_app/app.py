@@ -10,14 +10,14 @@ import streamlit as st
 from datetime import datetime
 from io import StringIO
 
-# ── Page Configuration ──
+# Page Configuration
 st.set_page_config(
     page_title="AtmoKHI — Karachi AQI Predictor",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# ── Directory Paths Setup ──
+# Directory Paths Setup
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(BASE_DIR, "training_pipeline", "models", "best_model.pkl")
 CSV_PATH = os.path.join(BASE_DIR, "data", "aqi_features.csv")
@@ -31,7 +31,7 @@ GITHUB_CSV_URL = "https://raw.githubusercontent.com/murtaza-23/AtmoKHI/main/data
 LINKEDIN_URL = "https://www.linkedin.com/in/murtaza-aamir"
 GITHUB_REPO_URL = "https://github.com/murtaza-23/AtmoKHI"
 
-# ── Custom CSS — AtmoKHI Design System ──
+# Custom CSS — AtmoKHI Design System 
 st.markdown(
     """
     <style>
@@ -755,9 +755,7 @@ active_tab = st.radio(
     key="atmokhi_nav",
 )
 
-# ------------------------------------------------------------------------------
-# TAB 1: Live & 3-Day Forecast
-# ------------------------------------------------------------------------------
+# TAB 1: Live and 3 Day Forecast
 if active_tab == TAB_LABELS[0]:
     if current:
         aqi_val = current["aqi"]
@@ -940,9 +938,7 @@ if active_tab == TAB_LABELS[0]:
           config={"displayModeBar": False, "responsive": True},
       )
 
-# ------------------------------------------------------------------------------
 # TAB 2: Model Architecture & SHAP
-# ------------------------------------------------------------------------------
 elif active_tab == TAB_LABELS[1]:
     st.markdown("### Model Evaluation Metrics")
     
@@ -1002,9 +998,7 @@ elif active_tab == TAB_LABELS[1]:
         3. **Diurnal Time Features**: Hour of the day captures traffic peak times during commuting hours.
         """)
 
-# ------------------------------------------------------------------------------
 # TAB 3: Interactive Custom Scenario Simulator
-# ------------------------------------------------------------------------------
 elif active_tab == TAB_LABELS[2]:
     st.markdown("### Interactive Custom Scenario Simulator")
     st.markdown('<p class="accent-body">Adjust input sliders to test how custom pollutant levels and temporal lags affect AQI predictions.</p>', unsafe_allow_html=True)
@@ -1039,8 +1033,20 @@ elif active_tab == TAB_LABELS[2]:
                 res = requests.post(f"{API_URL}/predict/custom", json=payload, timeout=5)
                 if res.status_code == 200:
                     data = res.json()
-                    cat_emoji = get_aqi_info(data['predicted_aqi'])["emoji"]
-                    st.success(f"Predicted Custom AQI: **{data['predicted_aqi']}** ({cat_emoji} {data['category']})")
+                    pred_val = float(data['predicted_aqi'])
+                    p_meta = get_aqi_info(pred_val)
+                    
+                    st.markdown(f"""
+                        <div class="health-status-card" style="margin-top:20px; --card-accent: {p_meta['color']}; --card-fill: {p_meta['fill']}; --card-glow: {p_meta['glow']}; --card-text: {p_meta['text']};">
+                            <div class="health-status-row">
+                                <div class="health-status-emoji">{p_meta['emoji']}</div>
+                                <div class="health-status-content">
+                                    <div class="health-status-label">Predicted Scenario Status: {p_meta['label']}</div>
+                                    <div class="health-status-aqi">AQI {pred_val:.1f}</div>
+                                </div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
                 else:
                     st.warning("API backend unreachable. Using local calculation...")
                     local_model = load_local_model()
@@ -1057,16 +1063,25 @@ elif active_tab == TAB_LABELS[2]:
                         }
                         f_df = pd.DataFrame([feat_dict])
                         pred_val = float(local_model.predict(f_df)[0])
-                        pred_meta = get_aqi_info(pred_val)
-                        st.success(f"Local Model Prediction: **{pred_val:.1f}** ({pred_meta['emoji']} {pred_meta['label']})")
+                        p_meta = get_aqi_info(pred_val)
+                        
+                        st.markdown(f"""
+                            <div class="health-status-card" style="margin-top:20px; --card-accent: {p_meta['color']}; --card-fill: {p_meta['fill']}; --card-glow: {p_meta['glow']}; --card-text: {p_meta['text']};">
+                                <div class="health-status-row">
+                                    <div class="health-status-emoji">{p_meta['emoji']}</div>
+                                    <div class="health-status-content">
+                                        <div class="health-status-label">Local Model Prediction: {p_meta['label']}</div>
+                                        <div class="health-status-aqi">AQI {pred_val:.1f}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
                     else:
                         st.error("No local model binary found.")
             except Exception as ex:
                 st.error(f"Prediction request failed: {ex}")
 
-# ------------------------------------------------------------------------------
 # TAB 4: Data Insights & Visualizations
-# ------------------------------------------------------------------------------
 elif active_tab == TAB_LABELS[3]:
     st.markdown("### Karachi Air Quality Data Insights")
     st.markdown('<p class="accent-body">Exploratory charts generated from historical environmental data.</p>', unsafe_allow_html=True)
@@ -1095,9 +1110,7 @@ elif active_tab == TAB_LABELS[3]:
                 st.info(f"Plot `{filename}` not found in `{folder}`.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-# ------------------------------------------------------------------------------
 # TAB 5: Health Guidelines
-# ------------------------------------------------------------------------------
 elif active_tab == TAB_LABELS[4]:
     st.markdown("### Public Health Advisories")
     

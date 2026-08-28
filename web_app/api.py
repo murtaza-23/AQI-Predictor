@@ -15,11 +15,11 @@ MODEL_PATH = os.path.join(BASE_DIR, "training_pipeline", "models", "best_model.p
 
 GITHUB_CSV_URL = (
     "https://raw.githubusercontent.com/"
-    "murtaza-23/HawaNama/main/data/aqi_features.csv"
+    "murtaza-23/AtmoKHI/main/data/aqi_features.csv"
 )
 
 app = FastAPI(
-    title="HawaName - Karachi AQI Predictor API",
+    title="AtmoKHI - Karachi AQI Predictor API",
     description="Real-time Air Quality Monitoring and 72-Hour AQI Forecasting Engine for Karachi",
     version="1.0.0"
 )
@@ -273,7 +273,7 @@ def recursive_forecast(df: pd.DataFrame, hours: int = 72) -> list:
 
 @app.get("/")
 def root():
-    return {"name": "HawaNama — Karachi AQI Predictor API",
+    return {"name": "AtmoKHI — Karachi AQI Predictor API",
             "version": "1.0.0",
             "endpoints": ["/health", "/current", "/forecast", "/forecast/daily", "/history"]}
 
@@ -381,47 +381,47 @@ METRICS_TXT_PATH  = os.path.join(BASE_DIR, "training_pipeline", "models", "metri
 @app.get("/model/info")
 def get_model_info():
     import json
-    model_name = "XGBoost"
-    rmse = 0.7300
-    mae = 0.4890
-    r2 = 0.9922
-    trained_at = None
 
-    # Try reading structured JSON metrics
     if os.path.exists(METRICS_JSON_PATH):
         try:
-            with open(METRICS_JSON_PATH, "r") as f:
+            with open(METRICS_JSON_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return {
-                    "model_name": data.get("best_model_name", "XGBoost Regressor"),
-                    "features_count": len(FEATURES),
-                    "features": FEATURES,
-                    "metrics": {
-                        "r2": data.get("r2", r2),
-                        "rmse": data.get("rmse", rmse),
-                        "mae": data.get("mae", mae),
-                        "cv_folds": 5,
-                        "cross_val_strategy": "TimeSeriesSplit",
-                        "trained_at": data.get("trained_at")
-                    },
-                    "model_comparison": data.get("model_comparison", [
-                        {"model": "XGBoost", "rmse": round(data.get("rmse", rmse), 4), "mae": round(data.get("mae", mae), 4), "r2": round(data.get("r2", r2), 4), "status": "Best Model"}
-                    ])
-                }
+            return {
+                "model_name": data.get("best_model_name", "XGBoost"),
+                "features_count": len(FEATURES),
+                "features": FEATURES,
+                "metrics": {
+                    "r2": data.get("r2"),
+                    "rmse": data.get("rmse"),
+                    "mae": data.get("mae"),
+                    "cv_folds": 5,
+                    "cross_val_strategy": "TimeSeriesSplit",
+                    "trained_at": data.get("trained_at"),
+                },
+                "model_comparison": data.get("model_comparison", []),
+            }
         except Exception as e:
             print(f"Error reading metrics.json: {e}")
 
-    # Fallback to reading text metrics
+    model_name = "XGBoost"
+    rmse = mae = r2 = None
+    trained_at = None
+
     if os.path.exists(METRICS_TXT_PATH):
         try:
-            with open(METRICS_TXT_PATH, "r") as f:
+            with open(METRICS_TXT_PATH, "r", encoding="utf-8") as f:
                 lines = f.readlines()
                 for line in lines:
-                    if "Best model:" in line: model_name = line.split(":")[-1].strip()
-                    elif "RMSE:" in line: rmse = float(line.split(":")[-1].strip())
-                    elif "MAE:" in line: mae = float(line.split(":")[-1].strip())
-                    elif "R²:" in line: r2 = float(line.split(":")[-1].strip())
-                    elif "Trained at:" in line: trained_at = line.split("Trained at:")[-1].strip()
+                    if "Best model:" in line:
+                        model_name = line.split(":")[-1].strip()
+                    elif "RMSE:" in line:
+                        rmse = float(line.split(":")[-1].strip())
+                    elif "MAE:" in line:
+                        mae = float(line.split(":")[-1].strip())
+                    elif "R²:" in line:
+                        r2 = float(line.split(":")[-1].strip())
+                    elif "Trained at:" in line:
+                        trained_at = line.split("Trained at:")[-1].strip()
         except Exception as e:
             print(f"Error parsing metrics.txt: {e}")
 
@@ -435,11 +435,11 @@ def get_model_info():
             "mae": mae,
             "cv_folds": 5,
             "cross_val_strategy": "TimeSeriesSplit",
-            "trained_at": trained_at
+            "trained_at": trained_at,
         },
         "model_comparison": [
             {"model": model_name, "rmse": rmse, "mae": mae, "r2": r2, "status": "Best Model"}
-        ]
+        ] if r2 is not None else [],
     }
 
 class PredictRequest(BaseModel):
@@ -483,7 +483,6 @@ def predict_custom(req: PredictRequest):
     predicted_aqi = float(model.predict(feature_row)[0])
     predicted_aqi = max(0, min(500, round(predicted_aqi, 1)))
     category = get_aqi_category(predicted_aqi)
-
     return {
         "predicted_aqi": predicted_aqi,
         "category": category["label"],

@@ -20,6 +20,4 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-training_pipeline/models/*.pkl
-
 .streamlit/secrets.toml

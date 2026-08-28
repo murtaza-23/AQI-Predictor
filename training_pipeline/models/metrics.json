@@ -1,9 +1,9 @@
 {
     "best_model_name": "XGBoost",
-    "rmse": 0.73,
-    "mae": 0.489,
-    "r2": 0.9922,
-    "trained_at": "2026-08-27 12:54:10.522745",
+    "rmse": 1.0806,
+    "mae": 0.5139,
+    "r2": 0.9829,
+    "trained_at": "2026-08-28 11:41:15.388536",
     "features": [
         "pm2_5",
         "pm10",
@@ -42,9 +42,9 @@
     "model_comparison": [
         {
             "model": "XGBoost",
-            "rmse": 0.73,
-            "mae": 0.489,
-            "r2": 0.9922,
+            "rmse": 1.0806,
+            "mae": 0.5139,
+            "r2": 0.9829,
             "status": "Best Model"
         }
     ]

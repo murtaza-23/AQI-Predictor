@@ -2,8 +2,6 @@
 
 **Karachi AQI Predictor and Analytics System**
 
-Developed by **Murtaza Aamir** as the final project for the **10Pearls Pakistan SHINE Internship Program**.
-
 **AtmoKHI** monitors live air quality parameters in Karachi and delivers automated **72-hour forward-looking AQI forecasts**. The platform features real-time pollutant tracking, interactive trend analysis, model explainability metrics, a custom scenario simulator, and public health advisories.
 
 * **Location:** Karachi, Sindh, Pakistan (24.86°N, 67.02°E)

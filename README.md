@@ -13,7 +13,6 @@
 The production dashboard and REST API are deployed live:
 
 * **Streamlit Dashboard:** [atmokhi.streamlit.app](https://atmokhi.streamlit.app)
-* **FastAPI Backend Documentation:** `https://<YOUR-RENDER-NAME>.onrender.com/docs`
 
 ---
 

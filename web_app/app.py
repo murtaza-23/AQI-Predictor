@@ -91,7 +91,7 @@ st.markdown(
         margin-right: 15px;
         transition: color 0.2s;
     }
-    .header-links a:hover { color: #38BDF8; text-decoration: underline; }
+    .header-links a:hover { color: #1E249E; text-decoration: underline; }
 
     .header-location-badge {
         display: inline-block;

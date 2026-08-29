@@ -960,7 +960,7 @@ elif active_tab == TAB_LABELS[1]:
     with m_col3:
         st.markdown(f"""
             <div class="glass-card">
-                <div class="card-label">Root Mean Sq Error</div>
+                <div class="card-label">Root Mean Square Error</div>
                 <div class="card-value" style="color:#EAB308;">{_fmt_metric(real_rmse)}</div>
             </div>
         """, unsafe_allow_html=True)

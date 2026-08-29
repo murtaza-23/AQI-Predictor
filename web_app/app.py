@@ -598,7 +598,7 @@ def get_aqi_info(aqi):
 @st.cache_data(ttl=300)
 def call_api(endpoint, params=None):
     try:
-        r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=6)
+        r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=45)
         r.raise_for_status()
         return r.json()
     except Exception:

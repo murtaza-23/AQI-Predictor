@@ -802,7 +802,20 @@ if active_tab == TAB_LABELS[0]:
             )
             st.plotly_chart(fig_gauge, use_container_width=True, config={"displayModeBar": False, "responsive": True})
 
-            st.caption(f"Last updated: **{current['timestamp']} UTC**")
+        # Convert UTC timestamp to Pakistan Standard Time (PKT / UTC+5)
+        try:
+            utc_dt = pd.to_datetime(current['timestamp'])
+            
+            # If the string lacks explicit UTC tz info, set it first then convert
+            if utc_dt.tzinfo is None:
+                utc_dt = utc_dt.tz_localize('UTC')
+                
+            pkt_dt = utc_dt.tz_convert('Asia/Karachi')
+            formatted_time = pkt_dt.strftime('%b %d, %Y at %I:%M %p PKT')
+        except Exception:
+            formatted_time = f"{current['timestamp']} UTC"
+
+        st.caption(f"Last updated: **{formatted_time}**")
 
         with col_right:
             st.markdown("### Current Pollutants")

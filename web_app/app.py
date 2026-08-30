@@ -594,16 +594,16 @@ def get_aqi_info(aqi):
                 "fill": "#EDE9FE", "glow": "rgba(168, 85, 247, 0.32)", "text": "#581C87"}
 
 
-# API helper function with custom styled spinner
-@st.cache_data(ttl=300)
+# API helper function with a clean loading indicator
+
+@st.cache_data(ttl=300, show_spinner="Syncing real-time pollutant metrics...")
 def call_api(endpoint, params=None):
-    with st.spinner("Updating air quality feed..."):
-        try:
-            r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=45)
-            r.raise_for_status()
-            return r.json()
-        except Exception:
-            return None
+    try:
+        r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=45)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return None
 
 
 # Standalone model loader fallback

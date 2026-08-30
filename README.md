@@ -12,7 +12,7 @@
 
 The production dashboard and REST API are deployed live:
 
-* **Streamlit Dashboard:** [[atmokhi.streamlit.app](https://atmokhi.streamlit.app)](https://atmokhi.streamlit.app/)
+* **Streamlit Dashboard:** [atmokhi.streamlit.app](https://atmokhi.streamlit.app/)
 
 ---
 

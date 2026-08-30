@@ -595,7 +595,7 @@ def get_aqi_info(aqi):
 
 
 # API helper function
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner="Updating air quality feed...")
 def call_api(endpoint, params=None):
     try:
         r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=45)

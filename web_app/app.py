@@ -780,11 +780,11 @@ if active_tab == TAB_LABELS[0]:
                     "borderwidth": 2,
                     'bordercolor': "#CBD5E1",
                     'steps': [
-                        {'range': [0, 50], 'color': 'rgba(34, 197, 94, 0.50)'},
-                        {'range': [51, 100], 'color': 'rgba(234, 179, 8, 0.50)'},
-                        {'range': [101, 150], 'color': 'rgba(249, 115, 22, 0.50)'},
-                        {'range': [151, 200], 'color': 'rgba(239, 68, 68, 0.48)'},
-                        {'range': [201, 300], 'color': 'rgba(168, 85, 247, 0.48)'},
+                        {'range': [0, 50], 'color': 'rgba(34, 197, 94, 0.80)'},
+                        {'range': [51, 100], 'color': 'rgba(234, 179, 8, 0.80)'},
+                        {'range': [101, 150], 'color': 'rgba(249, 115, 22, 0.80)'},
+                        {'range': [151, 200], 'color': 'rgba(239, 68, 68, 0.80)'},
+                        {'range': [201, 300], 'color': 'rgba(168, 85, 247, 0.80)'},
                     ],
                     "threshold": {
                         "line": {"color": meta["color"], "width": 6},

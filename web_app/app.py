@@ -10,6 +10,9 @@ import streamlit as st
 from datetime import datetime
 from io import StringIO
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
 # Page Configuration
 st.set_page_config(
     page_title="AtmoKHI — Karachi AQI Predictor",

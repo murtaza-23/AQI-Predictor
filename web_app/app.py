@@ -617,6 +617,37 @@ def get_daily_forecast_cached():
 def get_72h_forecast_cached():
     return call_api("/forecast", params={"hours": 72})
 
+OPENWEATHER_API_KEY = st.secrets.get("OPENWEATHER_API_KEY", "")
+
+@st.cache_data(ttl=900, show_spinner=False)
+def fetch_current_openweather():
+    if not OPENWEATHER_API_KEY:
+        print("OpenWeather API key missing.")
+        return None
+        
+    try:
+        url = "https://api.openweathermap.org/data/2.5/weather"
+        params = {
+            "lat": 24.860753,
+            "lon": 67.029503,
+            "appid": OPENWEATHER_API_KEY,
+            "units": "metric"  # Temperature in Celsius, wind in m/s
+        }
+        res = requests.get(url, params=params, timeout=5)
+        res.raise_for_status()
+        data = res.json()
+        
+        return {
+            "temp": round(data["main"]["temp"], 1),
+            "humidity": data["main"]["humidity"],
+            "wind_speed": round(data["wind"]["speed"] * 3.6, 1),  # Convert m/s to km/h
+            "wind_deg": data["wind"]["deg"],
+            "description": data["weather"][0]["description"].title()
+        }
+    except Exception as e:
+        print(f"OpenWeather fetch failed: {e}")
+        return None
+
 
 # Standalone model loader fallback
 @st.cache_resource
@@ -854,7 +885,46 @@ if active_tab == TAB_LABELS[0]:
                     </div>
                     """,
                     unsafe_allow_html=True
+
                 )   
+                    
+        weather = fetch_current_openweather()
+
+        if weather:
+            st.markdown("### Current Atmospheric Weather")
+            w_col1, w_col2, w_col3, w_col4 = st.columns(4)
+
+            with w_col1:
+                st.markdown(f"""
+                    <div class="glass-card">
+                        <div class="card-label">Temperature</div>
+                        <div class="card-value">{weather['temp']} °C</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with w_col2:
+                st.markdown(f"""
+                    <div class="glass-card">
+                        <div class="card-label">Relative Humidity</div>
+                        <div class="card-value">{weather['humidity']} %</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with w_col3:
+                st.markdown(f"""
+                    <div class="glass-card">
+                        <div class="card-label">Wind Speed</div>
+                        <div class="card-value">{weather['wind_speed']} km/h</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with w_col4:
+                st.markdown(f"""
+                    <div class="glass-card">
+                        <div class="card-label">Conditions</div>
+                        <div class="card-value" style="font-size: 1.4rem !important;">{weather['description']}</div>
+                    </div>
+                """, unsafe_allow_html=True)
 
     st.markdown("---")
 

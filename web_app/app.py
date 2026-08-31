@@ -595,7 +595,7 @@ def get_aqi_info(aqi):
 
 
 # Generic short-lived call helper (3 minutes)
-@st.cache_data(ttl=180, show_spinner=False)
+@st.cache_data(ttl=180, show_spinner="Loading latest AQI data...")
 def call_api(endpoint, params=None):
     try:
         r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=45)

@@ -594,9 +594,8 @@ def get_aqi_info(aqi):
                 "fill": "#EDE9FE", "glow": "rgba(168, 85, 247, 0.32)", "text": "#581C87"}
 
 
-# API helper function with a clean loading indicator
-
-@st.cache_data(ttl=300, show_spinner="Syncing real-time pollutant metrics...")
+# Generic short-lived call helper (3 minutes)
+@st.cache_data(ttl=180, show_spinner=False)
 def call_api(endpoint, params=None):
     try:
         r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=45)
@@ -604,6 +603,16 @@ def call_api(endpoint, params=None):
         return r.json()
     except Exception:
         return None
+
+# Dedicated 1-Hour Global Cache for Daily Summaries
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_daily_forecast_cached():
+    return call_api("/forecast/daily")
+
+# Dedicated 1-Hour Global Cache for 72-Hour Forecast
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_72h_forecast_cached():
+    return call_api("/forecast", params={"hours": 72})
 
 
 # Standalone model loader fallback
@@ -663,10 +672,10 @@ def load_model_metrics():
     return {"model_name": "XGBoost", "metrics": {"r2": None, "rmse": None, "mae": None}}
 
 
-# Fetch active data feeds
+# Fetch active data feeds using dedicated hourly cached endpoints
 current = call_api("/current")
-daily_data = call_api("/forecast/daily")
-forecast_data = call_api("/forecast", params={"hours": 72})
+daily_data = get_daily_forecast_cached()
+forecast_data = get_72h_forecast_cached()
 
 # Offline fallback if API server is not running
 if not current:

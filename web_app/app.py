@@ -607,15 +607,19 @@ def call_api(endpoint, params=None):
     except Exception:
         return None
 
-# Dedicated 1-Hour Global Cache for Daily Summaries
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_daily_forecast_cached():
-    return call_api("/forecast/daily")
+    data = call_api("/forecast/daily")
+    if data is None:
+        st.cache_data.clear() # Clears cache so the next refresh retries the API
+    return data
 
-# Dedicated 1-Hour Global Cache for 72-Hour Forecast
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_72h_forecast_cached():
-    return call_api("/forecast", params={"hours": 72})
+    data = call_api("/forecast", params={"hours": 72})
+    if data is None:
+        st.cache_data.clear()
+    return data
 
 OPENWEATHER_API_KEY = st.secrets.get("OPENWEATHER_API_KEY", "")
 

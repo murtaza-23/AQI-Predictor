@@ -3,7 +3,6 @@ import joblib
 import numpy as np
 import pandas as pd
 import requests
-import platform
 from io import StringIO
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException
@@ -105,73 +104,8 @@ def load_latest_data() -> pd.DataFrame:
     is_new_live = df["timestamp"] >= CUTOFF
     df = df[is_clean_hour | is_new_live].copy()
     df = df.sort_values("timestamp").reset_index(drop=True)
+
     return df
-
-
-def load_latest_single_row() -> pd.DataFrame:
-    # Attempt to query Hopsworks Feature Store directly (Linux / Render mode)
-    if platform.system() == "Linux" and os.getenv("HOPSWORKS_API_KEY"):
-        try:
-            cert_folder = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), ".hopsworks_certs"
-            )
-            os.makedirs(cert_folder, exist_ok=True)
-            import hopsworks
-
-            project = hopsworks.login(
-                project="aqi_predictor_23",
-                host="eu-west.cloud.hopsworks.ai",
-                port=443,
-                api_key_value=os.getenv("HOPSWORKS_API_KEY"),
-                cert_folder=cert_folder,
-            )
-            fs = project.get_feature_store()
-            fg = fs.get_feature_group(name="aqi_features", version=1)
-
-            # Single-row read (instant, minimal bandwidth & credit usage)
-            latest_df = fg.select_all().sort_by(fg.timestamp, reverse=True).limit(1).read()
-            if not latest_df.empty:
-                latest_df["timestamp"] = pd.to_datetime(latest_df["timestamp"])
-                return latest_df
-        except Exception as e:
-            print(f"Hopsworks single-row fetch failed, falling back to GitHub CSV: {e}")
-
-    # Fallback to loading latest row from GitHub CSV / local CSV
-    df = load_latest_data()
-    return df.tail(1)
-
-
-def load_recent_forecast_window(limit: int = 100) -> pd.DataFrame:
-    # 1. Primary Hopsworks Read: Fetch ONLY the last 100 rows
-    if platform.system() == "Linux" and os.getenv("HOPSWORKS_API_KEY"):
-        try:
-            cert_folder = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), ".hopsworks_certs"
-            )
-            os.makedirs(cert_folder, exist_ok=True)
-            import hopsworks
-
-            project = hopsworks.login(
-                project="aqi_predictor_23",
-                host="eu-west.cloud.hopsworks.ai",
-                port=443,
-                api_key_value=os.getenv("HOPSWORKS_API_KEY"),
-                cert_folder=cert_folder,
-            )
-            fs = project.get_feature_store()
-            fg = fs.get_feature_group(name="aqi_features", version=1)
-
-            # Query only the top 100 recent rows (takes ~1 second, avoids all timeouts)
-            df = fg.select_all().sort_by(fg.timestamp, reverse=True).limit(limit).read()
-            if not df.empty:
-                df["timestamp"] = pd.to_datetime(df["timestamp"])
-                df = df.sort_values("timestamp").reset_index(drop=True)
-                return df
-        except Exception as e:
-            print(f"Hopsworks 100-row fetch failed, falling back to GitHub CSV: {e}")
-
-    # 2. Fallback: Load full CSV from GitHub mirror
-    return load_latest_data()
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     
@@ -353,7 +287,7 @@ def health():
 
 @app.get("/current")
 def get_current():
-    df = load_latest_single_row()
+    df = load_latest_data()
     latest = df.iloc[-1]
     aqi = float(latest["aqi"])
     category = get_aqi_category(aqi)
@@ -377,7 +311,7 @@ def get_forecast(hours: int = 72):
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
 
-    df = load_recent_forecast_window(limit=100)
+    df = load_latest_data()
     forecasts = recursive_forecast(df, hours=hours)
 
     for forecast in forecasts:
@@ -402,7 +336,7 @@ def get_daily_forecast():
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
 
-    df = load_recent_forecast_window(limit=100)
+    df = load_latest_data()
     forecasts = recursive_forecast(df, hours=72)
 
     f_df = pd.DataFrame(forecasts)
@@ -431,9 +365,7 @@ def get_daily_forecast():
 
 @app.get("/history")
 def get_history(hours: int = 168):
-    # Dynamically limit Hopsworks fetch to requested hours + extra buffer
-    df = load_recent_forecast_window(limit=hours + 10)
-    
+    df = load_latest_data()
     recent = df.tail(hours)[["timestamp", "aqi", "pm2_5", "pm10", "o3", "no2", "co", "so2"]].copy()
     recent["timestamp"] = recent["timestamp"].astype(str)
     records = recent.to_dict(orient="records")
